@@ -1,0 +1,38 @@
+# This workflow will build and test the TACC Go consensus node (tacc-node)
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Go
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    name: Go Consensus Node Build & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tacc-node
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22.x'
+        cache-dependency-path: tacc-node/go.sum
+
+    - name: Verify Go dependencies
+      run: go mod verify
+
+    - name: Build tacc-node
+      run: go build -v ./...
+
+    - name: Run Consensus & Cryptography Tests
+      run: go test -v ./...
+

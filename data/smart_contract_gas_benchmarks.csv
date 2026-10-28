@@ -1,0 +1,6 @@
+Contract_Operation,Gas_Execution_Cost,EVM_Opcodes
+QC Quorum Verification (k=25),142350,"ecrecover, keccak256"
+QC Quorum Verification (k=100),485200,"batched ecrecover, keccak256"
+RFC 9381 VRF Verification,38400,"staticcall, sha256"
+Equivocation Fraud Proof Challenge,85600,"dual ecrecover, storage update"
+Reward Escrow Claim,28900,"sload, call.value"

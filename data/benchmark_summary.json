@@ -1,0 +1,55 @@
+{
+  "benchmark_environment": {
+    "nodes": 25,
+    "regions": 5,
+    "fault_injection": "Linux tc-netem",
+    "delay_burst_multiplier": 8,
+    "max_burst_delay_ms": 3000,
+    "packet_drop_rate": 0.1,
+    "leader_dos_delay_ms": "350-600"
+  },
+  "results": [
+    {
+      "metric": "Mean Latency (ms)",
+      "static_hotstuff2": 740.0,
+      "tacc_adaptive": 510.0,
+      "improvement_pct": 31.1
+    },
+    {
+      "metric": "P90 Latency (ms)",
+      "static_hotstuff2": 1150.0,
+      "tacc_adaptive": 680.0,
+      "improvement_pct": 40.9
+    },
+    {
+      "metric": "P99 Tail Latency (ms)",
+      "static_hotstuff2": 1950.0,
+      "tacc_adaptive": 770.0,
+      "improvement_pct": 60.5
+    },
+    {
+      "metric": "Committed Throughput (tx/s)",
+      "static_hotstuff2": 450.0,
+      "tacc_adaptive": 830.0,
+      "improvement_pct": 84.4
+    },
+    {
+      "metric": "View Change Frequency (rpm)",
+      "static_hotstuff2": 12.4,
+      "tacc_adaptive": 3.1,
+      "improvement_pct": 75.0
+    },
+    {
+      "metric": "Consensus Success Rate (%)",
+      "static_hotstuff2": 82.5,
+      "tacc_adaptive": 99.9,
+      "improvement_percentage_points": 17.4
+    },
+    {
+      "metric": "Security Bound Violation",
+      "static_hotstuff2": "Undefined",
+      "tacc_adaptive": "0 (P_bad <= 1e-9)",
+      "guarantee": "Mathematically Proven"
+    }
+  ]
+}

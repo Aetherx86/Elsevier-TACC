@@ -1,0 +1,6 @@
+Region,US-West,US-East,Europe,Asia,Africa
+US-West,15,70,140,120,260
+US-East,70,15,90,190,220
+Europe,140,90,15,180,170
+Asia,120,190,180,20,280
+Africa,260,220,170,280,30

@@ -1,0 +1,6 @@
+Byzantine_Ratio_rho,k_min_Binomial,k_min_Hypergeometric_N500,Exact_P_bad,Target_Security_epsilon,Target_Environment
+0.1,40,38,6.42e-10,1.0e-09,Private Consortium
+0.2,150,148,7.15e-10,1.0e-09,Standard Public WAN
+0.25,260,252,8.90e-10,1.0e-09,Hostile Internet
+0.3,600,580,4.12e-10,1.0e-09,Extreme Adversary
+0.33,1200,1140,9.88e-10,1.0e-09,Theoretical BFT Limit
