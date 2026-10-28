@@ -1,0 +1,39 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Papers and Patent documents (per request)
+docs/
+*.pdf
+*.tex
+*.bib
+*.typ
+
+# Compiled binaries and build artifacts
+tacc-node/tacc-node
+tacc-core-rust/target/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test and coverage artifacts
+*.out
+*.test
+*.prof
+
+# Runtime logs
+logs/
+*.log
+logs/*.csv
+!data/*.csv
+!data/*.json
+
+# Node & IDE
+node_modules/
+.idea/
+.vscode/
+*.swp

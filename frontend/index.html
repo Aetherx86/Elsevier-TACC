@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TACC Dashboard Simulator</title>
+  
+  <!-- React and ReactDOM via CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  
+  <!-- Babel to compile JSX in the browser -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+    // --- Inline SVG Icons ---
+    const Shield = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>;
+    const Play = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>;
+    const Pause = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>;
+    const RefreshCw = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>;
+    const Settings = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
+    const Activity = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>;
+    const AlertTriangle = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>;
+    const Server = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>;
+    const Zap = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>;
+
+    // --- 상수 및 시뮬레이션 설정 ---
+    const TOTAL_NODES = 50;
+    const HISTORY_LEN = 100;
+    const TICK_RATE_MS = 250; 
+    const TIMEOUT_PENALTY = 500; 
+
+    // 기본 파라미터 (논문 기준)
+    const DEFAULT_K = 25;
+    const DEFAULT_DELTA = 300; 
+    const DEFAULT_B = 100; // 블록 크기 (txs)
+    
+    const MIN_K = 15; // epsilon 제약(나쁜 위원회 방지) 하한선
+    const MAX_K = 50;
+    const MIN_DELTA = 150;
+    const MAX_DELTA = 1500;
+    const MAX_B = 500;
+    const MIN_B = 50;
+
+    function App() {
+      // --- 상태 관리 ---
+      const [isRunning, setIsRunning] = useState(false);
+      const [mode, setMode] = useState('tacc'); 
+      const [netState, setNetState] = useState('normal'); 
+      
+      const [round, setRound] = useState(0);
+      const [params, setParams] = useState({ k: DEFAULT_K, delta: DEFAULT_DELTA, b: DEFAULT_B });
+      const [cooldown, setCooldown] = useState(0);
+      const [activeRule, setActiveRule] = useState("Monitoring (Stable)");
+      
+      const [history, setHistory] = useState([]);
+      const [currentCommittee, setCurrentCommittee] = useState([]);
+      const [failedNodes, setFailedNodes] = useState([]);
+      const [retryCount, setRetryCount] = useState(0);
+
+      const timerRef = useRef(null);
+      
+      const paramsRef = useRef(params);
+      const historyRef = useRef(history);
+      const cooldownRef = useRef(cooldown);
+      const retryRef = useRef(retryCount);
+
+      useEffect(() => { paramsRef.current = params; }, [params]);
+      useEffect(() => { historyRef.current = history; }, [history]);
+      useEffect(() => { cooldownRef.current = cooldown; }, [cooldown]);
+      useEffect(() => { retryRef.current = retryCount; }, [retryCount]);
+
+      const getPercentile = (arr, p) => {
+        if (arr.length === 0) return 0;
+        const sorted = [...arr].sort((a, b) => a - b);
+        const index = Math.ceil((p / 100) * sorted.length) - 1;
+        return sorted[index];
+      };
+
+      const getGaussianRandom = (mean, std) => {
+        let u = 0, v = 0;
+        while(u === 0) u = Math.random();
+        while(v === 0) v = Math.random();
+        let num = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+        return Math.max(0, num * std + mean);
+      };
+
+      // --- 코어 시뮬레이션 로직 ---
+      const simulateRound = useCallback(() => {
+        setRound(prev => prev + 1);
+
+        const currentParams = paramsRef.current;
+        const currentHistory = historyRef.current;
+        const currentCooldown = cooldownRef.current;
+        let currentRetries = retryRef.current;
+
+        // Block Size(B)가 커지면 검증/전파 지연이 미세하게 증가함
+        let baseRtt = 40 + (currentParams.b / 10);
+        let rttStd = 10;
+        let packetLossRate = 0.0;
+
+        if (netState === 'burst') {
+          baseRtt += 350; 
+          rttStd = 100;
+        } else if (netState === 'loss') {
+          // [수정] 장애의 체감을 확실하게 하기 위해 25% 로스 적용
+          packetLossRate = 0.25; 
+        }
+
+        const selectProb = currentParams.k / TOTAL_NODES;
+        const committee = [];
+        const failures = [];
+        const latencies = [];
+
+        // Layer 1: VRF Sortition 시뮬레이션
+        for (let i = 0; i < TOTAL_NODES; i++) {
+          if (Math.random() < selectProb) {
+            committee.push(i);
+            if (Math.random() < packetLossRate) {
+              failures.push(i); 
+            } else {
+              latencies.push(getGaussianRandom(baseRtt, rttStd));
+            }
+          }
+        }
+
+        // Layer 2: Committee-BFT (HotStuff-like QC)
+        const actualK = committee.length;
+        const quorum = Math.floor((2 * actualK) / 3) + 1;
+        
+        let isTimeout = false;
+        let roundLatency = 0;
+        let tps = 0;
+
+        latencies.sort((a, b) => a - b);
+
+        if (latencies.length < quorum) {
+          isTimeout = true;
+          roundLatency = currentParams.delta + TIMEOUT_PENALTY; 
+          currentRetries += 1;
+        } else {
+          const qcTime = latencies[quorum - 1];
+          if (qcTime > currentParams.delta) {
+            isTimeout = true;
+            roundLatency = currentParams.delta + TIMEOUT_PENALTY; 
+            currentRetries += 1;
+          } else {
+            isTimeout = false;
+            roundLatency = qcTime;
+            // 합의 성공 시 TPS 계산: 처리한 Block Size / 지연시간(초)
+            tps = (currentParams.b / (roundLatency / 1000));
+          }
+        }
+
+        setCurrentCommittee(committee);
+        setFailedNodes(failures);
+        setRetryCount(currentRetries);
+
+        const newRoundData = { 
+          round: currentHistory.length > 0 ? currentHistory[currentHistory.length - 1].round + 1 : 1, 
+          latency: roundLatency, 
+          isTimeout,
+          tps,
+          k: currentParams.k,
+          delta: currentParams.delta,
+          b: currentParams.b
+        };
+
+        const newHist = [...currentHistory, newRoundData].slice(-HISTORY_LEN);
+        setHistory(newHist);
+
+        // Layer 3: Tail-Aware Controller Logic (White-box Control)
+        if (mode === 'tacc') {
+          if (currentCooldown > 0) {
+            setCooldown(currentCooldown - 1);
+          } else {
+            const windowLen = 10;
+            if (newHist.length >= windowLen) {
+              const windowData = newHist.slice(-windowLen);
+              
+              const successfulLats = windowData.filter(d => !d.isTimeout).map(d => d.latency);
+              const timeouts = windowData.filter(d => d.isTimeout).length;
+              const timeoutRate = timeouts / windowLen;
+              
+              const p99 = successfulLats.length > 0 ? getPercentile(successfulLats, 99) : currentParams.delta;
+
+              let newK = currentParams.k;
+              let newDelta = currentParams.delta;
+              let newB = currentParams.b;
+              let changed = false;
+              let ruleApplied = "Monitoring (Stable)";
+
+              // [Anti-Oscillation 1] Rollback Protocol
+              if (timeoutRate >= 0.3) {
+                newK = Math.min(MAX_K, currentParams.k + 10);
+                newDelta = Math.min(MAX_DELTA, p99 * 2.0);
+                newB = MIN_B; // 전파 부담 최소화
+                changed = true;
+                ruleApplied = "Rollback Triggered (Emergency)";
+              } 
+              else {
+                // Rule: Delta 조절
+                if (successfulLats.length > 0) {
+                  const targetDelta = p99 * 1.5; 
+                  if (targetDelta > currentParams.delta * 1.2 || targetDelta < currentParams.delta * 0.8) {
+                    const tempDelta = Math.max(MIN_DELTA, Math.min(MAX_DELTA, targetDelta));
+                    // [핵심 수정 버그] 계산된 값이 기존과 다를 때만 changed = true 반영 (무한 쿨다운 방지)
+                    if (tempDelta !== currentParams.delta) {
+                      newDelta = tempDelta;
+                      changed = true;
+                      ruleApplied = "Delta Adaptive Tuning";
+                    }
+                  }
+                }
+
+                // [Anti-Oscillation 2] Hysteresis 적용 K & B 조절
+                if (timeoutRate > 0) {
+                  // 실패 감지 시 즉각 상승
+                  newK = Math.min(MAX_K, currentParams.k + 5);
+                  newB = Math.max(MIN_B, currentParams.b - 50);
+                  if (newK !== currentParams.k || newB !== currentParams.b) { 
+                    changed = true; 
+                    ruleApplied = "Upscale (High Variance)"; 
+                  }
+                } else if (timeoutRate === 0 && p99 < currentParams.delta * 0.5) {
+                  // 안정 구간 시 천천히 하강 및 TPS 증대 (Security Epsilon Constraint 준수: Math.max(MIN_K))
+                  newK = Math.max(MIN_K, currentParams.k - 1);
+                  newB = Math.min(MAX_B, currentParams.b + 20);
+                  if (newK !== currentParams.k || newB !== currentParams.b) { 
+                    changed = true; 
+                    ruleApplied = "Hysteresis Downscale & TPS Boost"; 
+                  }
+                }
+              }
+
+              if (changed) {
+                setParams({ k: newK, delta: newDelta, b: newB });
+                setCooldown(5); // [Anti-Oscillation 3] Cooldown
+                setActiveRule(ruleApplied);
+              } else {
+                setActiveRule("Monitoring (Stable)");
+              }
+            }
+          }
+        } else {
+          setActiveRule("Disabled (Static Mode)");
+        }
+      }, [netState, mode]);
+
+      useEffect(() => {
+        if (isRunning) {
+          timerRef.current = setInterval(simulateRound, TICK_RATE_MS);
+        } else {
+          clearInterval(timerRef.current);
+        }
+        return () => clearInterval(timerRef.current);
+      }, [isRunning, simulateRound]);
+
+      const stats = useMemo(() => {
+        if (history.length === 0) return { p50: 0, p95: 0, p99: 0, timeoutRate: 0, avgTps: 0 };
+        const window = history.slice(-20);
+        const lats = window.map(h => h.latency);
+        const tpsArr = window.map(h => h.tps);
+        
+        return {
+          p50: getPercentile(lats, 50).toFixed(0),
+          p95: getPercentile(lats, 95).toFixed(0),
+          p99: getPercentile(lats, 99).toFixed(0),
+          timeoutRate: ((window.filter(h => h.isTimeout).length / window.length) * 100).toFixed(1),
+          avgTps: (tpsArr.reduce((a,b)=>a+b,0)/window.length).toFixed(0)
+        };
+      }, [history]);
+
+      const resetSim = () => {
+        setHistory([]);
+        setRound(0);
+        setParams({ k: DEFAULT_K, delta: DEFAULT_DELTA, b: DEFAULT_B });
+        setCooldown(0);
+        setCurrentCommittee([]);
+        setFailedNodes([]);
+        setRetryCount(0);
+        setActiveRule("Monitoring (Stable)");
+      };
+
+      const LineChart = ({ data, dataKey, color, yMax, title, unit }) => {
+        const width = 100;
+        const height = 100;
+        
+        const points = data.map((d, i) => {
+          const x = (i / (HISTORY_LEN - 1)) * width;
+          const y = height - (Math.min(d[dataKey], yMax) / yMax) * height;
+          return `${x},${y}`;
+        }).join(' ');
+
+        const latestValue = data.length > 0 ? data[data.length - 1][dataKey] : 0;
+
+        return (
+          <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col h-40 relative overflow-hidden">
+            <div className="flex justify-between items-center mb-2 z-10">
+              <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">{title}</span>
+              <span className="text-lg font-bold text-white" style={{ color }}>
+                {typeof latestValue === 'boolean' ? (latestValue ? 'Timeout' : 'OK') : Math.round(latestValue)}{unit}
+              </span>
+            </div>
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full absolute bottom-0 left-0 opacity-80 pt-8">
+              <line x1="0" y1="25" x2="100" y2="25" stroke="#334155" strokeWidth="0.5" strokeDasharray="2" />
+              <line x1="0" y1="50" x2="100" y2="50" stroke="#334155" strokeWidth="0.5" strokeDasharray="2" />
+              <line x1="0" y1="75" x2="100" y2="75" stroke="#334155" strokeWidth="0.5" strokeDasharray="2" />
+              <polyline fill="none" stroke={color} strokeWidth="2" points={points} strokeLinejoin="round" />
+              <polygon fill={`url(#grad-${dataKey})`} points={`0,100 ${points} 100,100`} className="opacity-20" />
+              <defs>
+                <linearGradient id={`grad-${dataKey}`} x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity="1"/>
+                  <stop offset="100%" stopColor={color} stopOpacity="0"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+        );
+      };
+
+      return (
+        <div className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8 font-sans">
+          <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 border-b border-slate-800 pb-6">
+            <div>
+              <h1 className="text-3xl font-extrabold text-white flex items-center gap-3">
+                <Shield className="text-indigo-500" size={32} />
+                TACC Dashboard
+              </h1>
+              <p className="text-slate-400 mt-1 ml-11 text-sm font-medium">
+                Trilemma-Aware Adaptive Committee Consensus Simulator (Thesis Version)
+              </p>
+            </div>
+            <div className="flex gap-4 mt-4 md:mt-0">
+              <button 
+                onClick={() => setIsRunning(!isRunning)}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all ${
+                  isRunning ? 'bg-rose-500/10 text-rose-500 border border-rose-500/50 hover:bg-rose-500/20' 
+                            : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/50 hover:bg-emerald-500/20'
+                }`}
+              >
+                {isRunning ? <><Pause size={18}/> 중지</> : <><Play size={18}/> 시뮬레이션 시작</>}
+              </button>
+              <button 
+                onClick={resetSim}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition-colors"
+              >
+                <RefreshCw size={18}/> 초기화
+              </button>
+            </div>
+          </header>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-3 space-y-6">
+              
+              {/* 화이트박스 제어 모니터링 패널 */}
+              <div className="bg-indigo-950/30 border border-indigo-500/30 rounded-xl p-5">
+                <h2 className="text-xs font-bold text-indigo-400 mb-2 uppercase tracking-wider flex items-center gap-2">
+                  <Settings size={14}/> Layer 3: White-box Controller
+                </h2>
+                <div className="bg-slate-900 rounded-lg p-3 border border-slate-800 font-mono text-sm">
+                  <div className="text-slate-400 mb-1">Active Rule:</div>
+                  <div className={`font-bold ${activeRule.includes('Rollback') ? 'text-rose-400' : activeRule.includes('Stable') ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    > {activeRule}
+                  </div>
+                  {mode === 'tacc' && cooldown > 0 && (
+                    <div className="text-xs text-indigo-300 mt-2 bg-indigo-900/50 inline-block px-2 py-1 rounded">
+                      Cooldown: {cooldown} rounds remaining
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                <h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2">
+                  <Settings size={16}/> 알고리즘 모드 (Ablation)
+                </h2>
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={() => { setMode('static'); setParams({ k: DEFAULT_K, delta: DEFAULT_DELTA, b: DEFAULT_B }); }}
+                    className={`p-3 rounded-lg text-left border transition-all ${
+                      mode === 'static' ? 'bg-slate-800 border-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'border-slate-700 text-slate-400 hover:border-slate-500'
+                    }`}
+                  >
+                    <div className="font-bold">Static (정적 모델)</div>
+                    <div className="text-xs mt-1 opacity-70">파라미터 고정. Jitter 및 장애에 취약.</div>
+                  </button>
+                  <button 
+                    onClick={() => setMode('tacc')}
+                    className={`p-3 rounded-lg text-left border transition-all ${
+                      mode === 'tacc' ? 'bg-slate-800 border-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'border-slate-700 text-slate-400 hover:border-slate-500'
+                    }`}
+                  >
+                    <div className="font-bold">TACC-Full (적응형)</div>
+                    <div className="text-xs mt-1 opacity-70">텔레메트리 기반 $k, \Delta, B$ 실시간 자가 튜닝.</div>
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                <h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2">
+                  <Activity size={16}/> tc netem 주입 환경
+                </h2>
+                <div className="grid grid-cols-1 gap-2">
+                  {[
+                    { id: 'normal', label: '정상 (Normal)', color: 'text-emerald-400', border: 'border-emerald-500/50' },
+                    { id: 'burst', label: '지연 버스트 (Delay Burst)', color: 'text-amber-400', border: 'border-amber-500/50' },
+                    { id: 'loss', label: '패킷 손실 (25% Loss)', color: 'text-rose-400', border: 'border-rose-500/50' },
+                  ].map(net => (
+                    <button 
+                      key={net.id}
+                      onClick={() => setNetState(net.id)}
+                      className={`p-3 rounded-lg text-left border transition-all ${
+                        netState === net.id ? `bg-slate-800 ${net.border} ${net.color}` : 'border-slate-800 text-slate-500 hover:border-slate-600'
+                      }`}
+                    >
+                      <div className="font-bold text-sm">{net.label}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                <h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider">주요 측정 지표 (KPI)</h2>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-end border-b border-slate-800 pb-2">
+                    <span className="text-slate-400 text-sm">Latency p50 / p95</span>
+                    <span className="text-base font-mono text-white">{stats.p50} / {stats.p95} <span className="text-xs text-slate-500">ms</span></span>
+                  </div>
+                  <div className="flex justify-between items-end border-b border-slate-800 pb-2">
+                    <span className="text-slate-400 font-bold text-indigo-400 text-sm">Target p99</span>
+                    <span className={`text-xl font-mono font-bold ${stats.p99 > 800 ? 'text-rose-400' : 'text-indigo-400'}`}>
+                      {stats.p99} <span className="text-xs opacity-70">ms</span>
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-end border-b border-slate-800 pb-2">
+                    <span className="text-slate-400 text-sm">Throughput (TPS)</span>
+                    <span className="text-lg font-mono text-emerald-400 font-bold">
+                      {stats.avgTps} <span className="text-xs opacity-70">tx/s</span>
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-end pb-1">
+                    <span className="text-slate-400 text-sm">Timeout Rate / Retries</span>
+                    <span className={`text-base font-mono ${stats.timeoutRate > 10 ? 'text-rose-500 font-bold' : 'text-emerald-400'}`}>
+                      {stats.timeoutRate}% <span className="text-slate-500">({retryCount})</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-9 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="lg:col-span-2">
+                  <LineChart data={history} dataKey="latency" color="#6366f1" yMax={1500} title="Finality Latency" unit="ms" />
+                </div>
+                <div className="lg:col-span-1">
+                  <LineChart data={history} dataKey="delta" color="#eab308" yMax={1500} title="Timeout Limit (Δ)" unit="ms" />
+                </div>
+                <div className="lg:col-span-1 relative">
+                  <LineChart data={history} dataKey="k" color="#10b981" yMax={TOTAL_NODES} title="Committee Size (k)" unit=" nodes" />
+                  {/* 보안 제약 표시 */}
+                  <div className="absolute top-12 left-4 text-[10px] text-emerald-500/70 font-mono border-t border-emerald-500/30 pt-1 w-[80%]">
+                    ε-Constraint (k ≥ {MIN_K})
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Server className="text-slate-400" size={20}/> 
+                    Layer 1 & 2: VRF Sortition & HotStuff-like QC
+                  </h2>
+                  <div className="flex gap-4 text-xs font-mono text-slate-400">
+                    <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-slate-700"></div>대기 노드</span>
+                    <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_#6366f1]"></div>VRF 선출 (k)</span>
+                    <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]"></div>장애 발생</span>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950 p-6 rounded-lg border border-slate-800 relative">
+                  <div className="grid grid-cols-10 gap-3 md:gap-4 place-items-center relative z-10">
+                    {Array.from({ length: TOTAL_NODES }).map((_, i) => {
+                      const isCommittee = currentCommittee.includes(i);
+                      const isFailed = failedNodes.includes(i);
+                      
+                      let nodeClass = "bg-slate-800 border-slate-700 text-slate-600";
+                      if (isFailed) {
+                        nodeClass = "bg-rose-500/20 border-rose-500 text-rose-300 shadow-[0_0_10px_rgba(244,63,94,0.3)]";
+                      } else if (isCommittee) {
+                        nodeClass = "bg-indigo-500/20 border-indigo-400 text-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.4)]";
+                      }
+
+                      return (
+                        <div key={i} className={`w-6 h-6 md:w-8 md:h-8 rounded-full border-2 flex items-center justify-center text-[10px] font-mono transition-all duration-300 ${nodeClass}`}>
+                          {i}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="mt-6 flex flex-wrap gap-4 text-sm">
+                  <div className="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700">
+                    <span className="text-slate-400 mr-2">Round:</span>
+                    <span className="font-mono text-white font-bold">{round}</span>
+                  </div>
+                  <div className="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700">
+                    <span className="text-slate-400 mr-2">Block Size (B):</span>
+                    <span className="font-mono text-amber-400 font-bold">{params.b}</span> txs
+                  </div>
+                  <div className="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700">
+                    <span className="text-slate-400 mr-2">Quorum Status:</span>
+                    <span className="font-mono text-emerald-400 font-bold">
+                      {currentCommittee.length - failedNodes.length} / {currentCommittee.length > 0 ? Math.floor((2 * currentCommittee.length) / 3) + 1 : 0}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-indigo-900/20 border border-indigo-500/30 rounded-xl p-5 text-sm text-indigo-200 leading-relaxed">
+                <h3 className="font-bold text-indigo-400 mb-2 flex items-center gap-2"><Zap size={16}/> 데모 시연 시나리오 (논문 검증)</h3>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li><strong>트릴레마 및 p99 폭발 관측:</strong> Static 모드에서 '지연 버스트'나 '패킷 손실'을 주입하면, 파라미터가 고정되어 있어 타임아웃이 연쇄 발생하며 $p99$ 지연과 실패율이 치솟습니다.</li>
+                  <li><strong>TACC 자동 제어 (White-box):</strong> 모드를 TACC로 변경하면, 실시간 텔레메트리를 통해 $\Delta$와 $K$를 조절하여 대수의 법칙으로 쿼럼 붕괴를 막고 지연 시간을 억제합니다. 좌측 상단의 'Active Rule'에서 화이트박스 제어 흐름을 직접 확인하세요.</li>
+                  <li><strong>보안 제약 및 TPS 튜닝:</strong> 안정 구간으로 복귀하면, 컨트롤러가 $K$를 줄이고 $B$(블록 크기)를 늘려 통신 비용을 아끼고 TPS를 극대화합니다. 단, 보안성 확보를 위해 이항분포 기반의 수학적 제약($K \ge 15$) 아래로는 절대 내려가지 않습니다.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html> 

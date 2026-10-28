@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TACC Consensus Control Dashboard</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: #090d16; color: #e2e8f0; }
+    .wrap { max-width: 1300px; margin: 0 auto; padding: 24px; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid #1e293b; padding-bottom: 16px; }
+    .header h1 { margin: 0; font-size: 24px; color: #6366f1; display: flex; align-items: center; gap: 10px; }
+    .tag { font-size: 11px; background: #312e81; color: #a5b4fc; padding: 3px 8px; border-radius: 9999px; font-weight: normal; }
+    .btn-group { display: flex; gap: 8px; }
+    button { background: #1e293b; color: #f8fafc; border: 1px solid #334155; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    button:hover { background: #334155; border-color: #6366f1; }
+    button.active { background: #4f46e5; border-color: #6366f1; color: white; }
+    button.danger { background: #881337; border-color: #f43f5e; color: #fecdd3; }
+    button.danger:hover { background: #e11d48; color: white; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .card { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 18px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+    .card h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; }
+    .val { font-size: 26px; font-weight: 700; font-family: monospace; }
+    .subval { font-size: 12px; color: #64748b; margin-top: 4px; }
+    .full { grid-column: 1 / -1; }
+    .half { grid-column: span 2; }
+    .mono { font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; font-family: monospace; }
+    td, th { padding: 10px 12px; border-bottom: 1px solid #1e293b; text-align: left; }
+    th { color: #94a3b8; font-weight: 600; background: #0b1120; }
+    .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    .ok { background: #064e3b; color: #34d399; }
+    .bad { background: #7f1d1d; color: #f87171; }
+    .warn { background: #78350f; color: #fbbf24; }
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); align-items: center; justify-content: center; z-index: 50; }
+    .modal-content { background: #111827; border: 1px solid #374151; border-radius: 14px; width: 800px; max-width: 90vw; padding: 24px; max-height: 85vh; overflow-y: auto; }
+    .chain-box { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; }
+    .chain-node { background: #1e1b4b; border: 1px solid #4338ca; border-radius: 8px; padding: 8px 12px; min-width: 140px; font-size: 12px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div>
+      <h1>TACC Engine Controller <span class="tag">HotStuff-2 & RFC 9381 VRF</span></h1>
+      <div style="font-size: 13px; color: #94a3b8; margin-top: 4px;">Trilemma-Aware Adaptive Committee Consensus with Mathematical Security Guarantee</div>
+    </div>
+    <div class="btn-group">
+      <button id="btnTACC" class="active" onclick="setMode('tacc')">Mode: TACC</button>
+      <button id="btnStatic" onclick="setMode('static')">Mode: Static</button>
+      <button class="danger" onclick="toggleFault('burst')">Delay Burst (8x)</button>
+      <button class="danger" onclick="toggleFault('drop')">Drop 10%</button>
+      <button style="background: #0284c7; border-color: #38bdf8;" onclick="runBenchmark()">Run Benchmark</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Round & View</h3>
+      <div class="val" id="round">- / -</div>
+      <div class="subval" id="modeDesc">Mode: TACC Adaptive</div>
+    </div>
+
+    <div class="card">
+      <h3>Committee Size (k)</h3>
+      <div class="val" id="kVal">-</div>
+      <div class="subval" id="kMinVal">Security Bound: k ≥ <span id="kmin">-</span></div>
+    </div>
+
+    <div class="card">
+      <h3>Timeout Limit (Δ)</h3>
+      <div class="val" id="deltaVal">- ms</div>
+      <div class="subval" id="deltaP99">Synchronized to P99 Latency</div>
+    </div>
+
+    <div class="card">
+      <h3>Latency (P50 / P99)</h3>
+      <div class="val" id="latVal">- / - ms</div>
+      <div class="subval" id="timeoutBadge">Quorum: Healthy</div>
+    </div>
+
+    <div class="card half">
+      <h3>HotStuff-2 2-Chain Finalized Chain</h3>
+      <div class="chain-box" id="finalizedChain">
+        <div class="chain-node"><strong>Genesis</strong><br><span style="font-size: 10px; color: #94a3b8;">Hash: 00000000...</span></div>
+      </div>
+    </div>
+
+    <div class="card half">
+      <h3>Adaptive Controller Note & Feedback</h3>
+      <div class="mono" id="ctrlNote" style="color: #38bdf8; font-size: 13px; padding-top: 6px;">Observing network telemetry...</div>
+      <div class="subval" style="margin-top: 10px;">Security ε-Constraint: P(Byzantine ≥ k/3) ≤ 1e-09 Guaranteed</div>
+    </div>
+
+    <div class="card full">
+      <h3>Live HotStuff-2 Consensus Telemetry Feed</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Round</th>
+            <th>View</th>
+            <th>Mode</th>
+            <th>Latency (P99)</th>
+            <th>Status</th>
+            <th>k / k_min</th>
+            <th>Timeout (Δ)</th>
+            <th>Block Size (B)</th>
+            <th>TPS</th>
+            <th>P(bad) Bound</th>
+            <th>Leader</th>
+            <th>Finalized Hash</th>
+          </tr>
+        </thead>
+        <tbody id="metricsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Benchmark Modal -->
+<div class="modal" id="benchModal">
+  <div class="modal-content">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h2 style="margin:0; font-size:18px;">Benchmark Comparison: Static HotStuff vs TACC Adaptive</h2>
+      <button onclick="closeModal()">Close</button>
+    </div>
+    <div id="benchBody" class="mono">Running comparative testbed under 8x delay burst and 10% packet drop...</div>
+  </div>
+</div>
+
+<script>
+let faultState = { delayBurst: false, drop: false };
+
+async function loadStatus() {
+  try {
+    const res = await fetch('/status');
+    const s = await res.json();
+    document.getElementById('round').innerText = `${s.round} / v${s.view}`;
+    document.getElementById('modeDesc').innerText = `Mode: ${s.params.mode.toUpperCase()}${s.safe_mode ? ' (SAFE MODE)' : ''}`;
+    document.getElementById('kVal').innerText = s.params.k;
+    document.getElementById('kmin').innerText = s.params.k_min;
+    document.getElementById('deltaVal').innerText = `${Math.round(s.params.delta / 1000000)} ms`;
+    document.getElementById('latVal').innerText = `${s.last_latency_ms} ms`;
+    
+    const timeoutElem = document.getElementById('timeoutBadge');
+    if (s.last_timeout) {
+      timeoutElem.innerHTML = `<span class="badge bad">Timeout / View Change</span>`;
+    } else {
+      timeoutElem.innerHTML = `<span class="badge ok">Quorum Confirmed</span>`;
+    }
+
+    if (s.finalized_chain && s.finalized_chain.length > 0) {
+      const box = document.getElementById('finalizedChain');
+      box.innerHTML = s.finalized_chain.slice(-6).map((h, i) => `
+        <div class="chain-node">
+          <strong style="color: #34d399;">Finalized #${i+1}</strong><br>
+          <span style="font-size: 10px; color: #a5b4fc;">${h.substring(0, 14)}...</span>
+        </div>
+      `).join('');
+    }
+
+    if (s.params.mode === 'tacc') {
+      document.getElementById('btnTACC').classList.add('active');
+      document.getElementById('btnStatic').classList.remove('active');
+    } else {
+      document.getElementById('btnStatic').classList.add('active');
+      document.getElementById('btnTACC').classList.remove('active');
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function loadMetrics() {
+  try {
+    const res = await fetch('/metrics');
+    const list = await res.json();
+    if (!list || list.length === 0) return;
+
+    const last = list[list.length - 1];
+    document.getElementById('ctrlNote').innerText = last.controller_note || "Equilibrium operating point";
+    document.getElementById('deltaP99').innerText = `P50: ${last.p50_ms}ms | P90: ${last.p90_ms}ms | P99: ${last.p99_ms}ms`;
+
+    const rows = list.slice(-15).reverse().map(m => `
+      <tr>
+        <td>#${m.round}</td>
+        <td>v${m.view}</td>
+        <td><span class="badge ${m.mode==='tacc'?'ok':'warn'}">${m.mode}</span></td>
+        <td>${m.latency_ms} ms (${m.p99_ms}ms)</td>
+        <td>${m.timeout ? '<span class="badge bad">Timeout</span>' : '<span class="badge ok">Commit</span>'}</td>
+        <td>${m.committee_size}</td>
+        <td>${m.delta_ms} ms</td>
+        <td>${m.block_size_b} tx</td>
+        <td>${m.tps ? m.tps.toFixed(1) : 0} tx/s</td>
+        <td>${m.security_p_bad ? m.security_p_bad.toExponential(2) : '-'}</td>
+        <td>${m.leader ? m.leader.substring(0, 10) : '-'}</td>
+        <td>${m.finalized_hash ? m.finalized_hash.substring(0, 10)+'...' : '-'}</td>
+      </tr>
+    `).join('');
+    document.getElementById('metricsBody').innerHTML = rows;
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function setMode(mode) {
+  await fetch('/mode', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode })
+  });
+  loadStatus();
+}
+
+async function toggleFault(type) {
+  if (type === 'burst') faultState.delayBurst = !faultState.delayBurst;
+  if (type === 'drop') faultState.drop = !faultState.drop;
+
+  await fetch('/fault', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      DelayBurstActive: faultState.delayBurst,
+      BurstMultiplier: faultState.delayBurst ? 8.0 : 1.0,
+      PacketLossRate: faultState.drop ? 0.10 : 0.0,
+      JitterVarianceMs: 30
+    })
+  });
+  alert(`Fault scenario updated: Delay Burst=${faultState.delayBurst}, Drop 10%=${faultState.drop}`);
+}
+
+async function runBenchmark() {
+  const modal = document.getElementById('benchModal');
+  const body = document.getElementById('benchBody');
+  modal.style.display = 'flex';
+  body.innerText = "Executing 30 rounds comparative stress benchmark under WAN network delay burst and packet loss...";
+
+  try {
+    const res = await fetch('/benchmark');
+    const r = await res.json();
+    body.innerHTML = `
+      <table style="width:100%; border-collapse:collapse; margin-top:10px;">
+        <tr style="border-bottom:2px solid #4f46e5;">
+          <th style="padding:8px;">Metric</th>
+          <th style="padding:8px;">Static HotStuff</th>
+          <th style="padding:8px;">TACC (Adaptive)</th>
+          <th style="padding:8px;">Improvement</th>
+        </tr>
+        <tr>
+          <td style="padding:8px;">Mean Latency</td>
+          <td style="padding:8px;">${r.static_mean_latency_ms.toFixed(1)} ms</td>
+          <td style="padding:8px;">${r.tacc_mean_latency_ms.toFixed(1)} ms</td>
+          <td style="padding:8px; color:#34d399; font-weight:bold;">${r.latency_improvement_pct.toFixed(1)}%</td>
+        </tr>
+        <tr>
+          <td style="padding:8px;">P99 Tail Latency</td>
+          <td style="padding:8px;">${r.static_p99_latency_ms.toFixed(1)} ms</td>
+          <td style="padding:8px;">${r.tacc_p99_latency_ms.toFixed(1)} ms</td>
+          <td style="padding:8px; color:#34d399; font-weight:bold;">${r.p99_improvement_pct.toFixed(1)}%</td>
+        </tr>
+        <tr>
+          <td style="padding:8px;">Throughput (TPS)</td>
+          <td style="padding:8px;">${r.static_avg_tps.toFixed(1)} tx/s</td>
+          <td style="padding:8px;">${r.tacc_avg_tps.toFixed(1)} tx/s</td>
+          <td style="padding:8px; color:#34d399; font-weight:bold;">+${r.tps_improvement_pct.toFixed(1)}%</td>
+        </tr>
+        <tr>
+          <td style="padding:8px;">View Changes</td>
+          <td style="padding:8px;">${r.static_view_changes}</td>
+          <td style="padding:8px;">${r.tacc_view_changes}</td>
+          <td style="padding:8px; color:#34d399; font-weight:bold;">-${r.view_change_reduction_pct.toFixed(1)}%</td>
+        </tr>
+        <tr>
+          <td style="padding:8px;">Consensus Success Rate</td>
+          <td style="padding:8px;">${r.static_success_rate.toFixed(1)}%</td>
+          <td style="padding:8px;">${r.tacc_success_rate.toFixed(1)}%</td>
+          <td style="padding:8px; color:#34d399; font-weight:bold;">+${(r.tacc_success_rate - r.static_success_rate).toFixed(1)} pp</td>
+        </tr>
+      </table>
+      <p style="margin-top:16px; color:#94a3b8; font-size:12px;">
+        Mathematical Security: Committee size k is bounded by k >= k_min satisfying P(bad) <= 1e-09.
+      </p>
+    `;
+  } catch (e) {
+    body.innerText = "Error running benchmark: " + e.message;
+  }
+}
+
+function closeModal() {
+  document.getElementById('benchModal').style.display = 'none';
+}
+
+setInterval(() => {
+  loadStatus();
+  loadMetrics();
+}, 1000);
+
+loadStatus();
+loadMetrics();
+</script>
+</body>
+</html>
