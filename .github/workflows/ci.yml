@@ -46,23 +46,35 @@ jobs:
   rust-workflow:
     name: Rust Quality, Tests & Security Audit
     runs-on: ubuntu-latest
-    if: hashFiles('**/Cargo.toml') != ''
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Check for Cargo.toml
+        id: check_cargo
+        run: |
+          if [ -f "Cargo.toml" ] || [ -n "$(find . -maxdepth 3 -name 'Cargo.toml' -not -path '*/target/*' -print -quit)" ]; then
+            echo "has_cargo=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_cargo=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up Rust Toolchain
+        if: steps.check_cargo.outputs.has_cargo == 'true'
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
 
       - name: Cache Cargo Dependencies
+        if: steps.check_cargo.outputs.has_cargo == 'true'
         uses: Swatinem/rust-cache@v2
 
       - name: Install cargo-audit
+        if: steps.check_cargo.outputs.has_cargo == 'true'
         uses: taiki-e/install-action@cargo-audit
 
       - name: Rust Formatting Check (cargo fmt)
+        if: steps.check_cargo.outputs.has_cargo == 'true'
         run: |
           if [ -f "Cargo.toml" ]; then
             cargo fmt --all -- --check
@@ -71,6 +83,7 @@ jobs:
           fi
 
       - name: Rust Linter Check (cargo clippy)
+        if: steps.check_cargo.outputs.has_cargo == 'true'
         run: |
           if [ -f "Cargo.toml" ]; then
             cargo clippy --workspace --all-targets --all-features -- -D warnings
@@ -79,6 +92,7 @@ jobs:
           fi
 
       - name: Rust Tests (cargo test)
+        if: steps.check_cargo.outputs.has_cargo == 'true'
         run: |
           if [ -f "Cargo.toml" ]; then
             cargo test --workspace --all-targets --all-features
@@ -87,6 +101,7 @@ jobs:
           fi
 
       - name: Rust Vulnerability Audit (cargo audit)
+        if: steps.check_cargo.outputs.has_cargo == 'true'
         run: |
           if [ -f "Cargo.toml" ]; then
             cargo audit
@@ -100,12 +115,21 @@ jobs:
   docker-workflow:
     name: Docker Lint, Build & Trivy Scan
     runs-on: ubuntu-latest
-    if: hashFiles('**/Dockerfile*') != ''
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Check for Dockerfile
+        id: check_docker
+        run: |
+          if [ -f "Dockerfile" ] || [ -n "$(find . -maxdepth 3 -name 'Dockerfile*' -not -path '*/node_modules/*' -print -quit)" ]; then
+            echo "has_docker=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_docker=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Lint Dockerfile (Hadolint)
+        if: steps.check_docker.outputs.has_docker == 'true'
         uses: hadolint/hadolint-action@v3.1.0
         with:
           recursive: true
@@ -113,9 +137,11 @@ jobs:
           failure-threshold: error
 
       - name: Set up Docker Buildx
+        if: steps.check_docker.outputs.has_docker == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Build Docker Image
+        if: steps.check_docker.outputs.has_docker == 'true'
         run: |
           if [ -f "Dockerfile" ]; then
             docker build -t ci-test-image:latest -f Dockerfile .
@@ -126,6 +152,7 @@ jobs:
           fi
 
       - name: Container Security Scan (Trivy)
+        if: steps.check_docker.outputs.has_docker == 'true'
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'ci-test-image:latest'
